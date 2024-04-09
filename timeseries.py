@@ -233,8 +233,8 @@ X_test = None
 y_train = None
 y_test = None
 doAveraging = False
-doSmoothing = False
-doDTW = False
+doSmoothing = True
+doDTW = True
 average_contents_x = []
 average_contents_y = []
 training_data = pd.DataFrame()
@@ -252,9 +252,22 @@ for i in range(1,11):
 
         data = data[data['class'] != 0]  # Remove the in-between recordings
         data['subject_number'] = i
-        if i < 9:
+        if doSmoothing and i < 9:
+            new_data = pd.DataFrame()
+            for class_val in data['class'].unique():
+                subset = data[data['class'] == class_val]
+                smaller_df = pd.DataFrame()
+                for column in data.columns:
+                    if column != 'class':
+                    # data[column] = gaussian_filter(data[column], 1)
+                        window_size = 3
+                        smaller_df[column] = np.convolve(subset[column], np.ones(window_size)/window_size, mode='valid')
+                smaller_df['class'] = class_val
+                new_data = pd.concat([new_data, smaller_df], axis=0)
+            data = new_data
+        if i <= 2:
             training_data = pd.concat([training_data, data], axis=0)
-        else:
+        elif i >= 9:
             testing_data = pd.concat([testing_data, data], axis=0)
 if doDTW:
     training_data = runDTW(training_data)
@@ -262,51 +275,5 @@ elif doAveraging:
     training_data = average_series(training_data)
 X_train, y_train = transform_data(training_data)
 X_test, y_test = transform_data(testing_data)
-
-# if doDTW:
-#     runDTW(training_data)
-#
-#
-#
-#         if doSmoothing and i < 9:
-#             new_data = pd.DataFrame()
-#             for class_val in data['class'].unique():
-#                 subset = data[data['class'] == class_val]
-#                 smaller_df = pd.DataFrame()
-#                 for column in data.columns:
-#                     if column != 'class':
-#                     # data[column] = gaussian_filter(data[column], 1)
-#                         window_size = 3
-#                         smaller_df[column] = np.convolve(subset[column], np.ones(window_size)/window_size, mode='valid')
-#                 smaller_df['class'] = class_val
-#                 new_data = pd.concat([new_data, smaller_df], axis=0)
-#             data = new_data
-#
-#         X, y = transform_data(data)
-#
-#         if doAveraging:
-#             if i != 9 and i != 10:
-#                 average_contents_y.append(y)
-#                 average_contents_x.append(X)
-#             else:
-#                 if i == 9:  # First test sample
-#                     X_test = X
-#                     y_test = y
-#                 else:  # Second test sample
-#                     X_test = np.concatenate((X_test, X), axis=0)
-#                     y_test = np.concatenate((y_test, y), axis=0)
-#         else:
-#             if i == 1: #First training sample
-#                 X_train = X
-#                 y_train = y
-#             elif i == 9: #First test sample
-#                 X_test = X
-#                 y_test = y
-#             elif i == 10: #Second test sample
-#                 X_test = np.concatenate((X_test, X), axis=0)
-#                 y_test = np.concatenate((y_test, y), axis=0)
-#             else: #All other training samples
-#                 X_train = np.concatenate((X_train, X), axis=0)
-#                 y_train = np.concatenate((y_train, y), axis=0)
 
 dotimeseriesclassification(X_train, X_test, y_train, y_test)
